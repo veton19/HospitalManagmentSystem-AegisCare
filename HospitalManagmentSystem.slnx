@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="HospitalManagmentSystem/HospitalManagmentSystem.csproj" />
+  <Project Path="TestHospitalManagmentSystem/TestHospitalManagmentSystem.csproj" Id="80e5adf7-1fa0-402a-9d77-e5d3592142e8" />
+</Solution>
