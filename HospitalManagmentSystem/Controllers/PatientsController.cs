@@ -28,7 +28,10 @@ namespace HospitalManagmentSystem.Controllers
         [HttpGet]
         public async Task<IActionResult> GetPatients([FromQuery] string? search)
         {
-            var query = _context.Patients.AsQueryable();
+            var query = _context.Patients
+                .Include(p => p.PrimaryDoctor)
+                .Include(p => p.PrimaryNurse)
+                .AsQueryable();
 
             if (User.IsInRole("Doctor"))
             {
@@ -93,7 +96,10 @@ namespace HospitalManagmentSystem.Controllers
         [HttpGet("{id}/chart")]
         public async Task<IActionResult> GetPatientChart(int id)
         {
-            var patient = await _context.Patients.FindAsync(id);
+            var patient = await _context.Patients
+                .Include(p => p.PrimaryDoctor)
+                .Include(p => p.PrimaryNurse)
+                .FirstOrDefaultAsync(p => p.Id == id);
             if (patient == null) return NotFound(new { message = "Patient not found." });
 
             if (User.IsInRole("Doctor"))
@@ -161,6 +167,103 @@ namespace HospitalManagmentSystem.Controllers
                 labOrders,
                 vitals,
                 admissions
+            });
+        }
+
+        public class AssignPatientRequest
+        {
+            public Guid? PrimaryDoctorId { get; set; }
+            public Guid? PrimaryNurseId { get; set; }
+        }
+
+        [HttpPut("{id}/assign")]
+        [Authorize(Roles = "Receptionist,Admin")]
+        public async Task<IActionResult> AssignPatient(int id, [FromBody] AssignPatientRequest request)
+        {
+            var patient = await _context.Patients
+                .Include(p => p.PrimaryDoctor)
+                .Include(p => p.PrimaryNurse)
+                .FirstOrDefaultAsync(p => p.Id == id);
+
+            if (patient == null) return NotFound(new { message = "Patient not found." });
+
+            Staff? newDoctor = null;
+            Staff? newNurse = null;
+
+            if (request.PrimaryDoctorId.HasValue && request.PrimaryDoctorId.Value != Guid.Empty)
+            {
+                newDoctor = await _context.Staff.FirstOrDefaultAsync(s => s.Id == request.PrimaryDoctorId.Value && s.RoleCode == 20 && s.IsActive);
+                if (newDoctor == null) return BadRequest(new { message = "Selected doctor was not found or is inactive." });
+                patient.PrimaryDoctorId = newDoctor.Id;
+            }
+            else if (request.PrimaryDoctorId == Guid.Empty)
+            {
+                patient.PrimaryDoctorId = null;
+            }
+
+            if (request.PrimaryNurseId.HasValue && request.PrimaryNurseId.Value != Guid.Empty)
+            {
+                newNurse = await _context.Staff.FirstOrDefaultAsync(s => s.Id == request.PrimaryNurseId.Value && s.RoleCode == 30 && s.IsActive);
+                if (newNurse == null) return BadRequest(new { message = "Selected nurse was not found or is inactive." });
+                patient.PrimaryNurseId = newNurse.Id;
+            }
+            else if (request.PrimaryNurseId == Guid.Empty)
+            {
+                patient.PrimaryNurseId = null;
+            }
+
+            await _context.SaveChangesAsync();
+
+            // Send notification to newly assigned Doctor
+            if (newDoctor != null)
+            {
+                _context.Notifications.Add(new Notification
+                {
+                    RecipientStaffId = newDoctor.StaffId,
+                    Title = "New Patient Assigned",
+                    Message = $"Patient {patient.FirstName} {patient.LastName} ({patient.MRN}) has been assigned to you by Reception.",
+                    Type = "OrderAction",
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
+
+            // Send notification to newly assigned Nurse
+            if (newNurse != null)
+            {
+                _context.Notifications.Add(new Notification
+                {
+                    RecipientStaffId = newNurse.StaffId,
+                    Title = "New Patient Assigned",
+                    Message = $"Patient {patient.FirstName} {patient.LastName} ({patient.MRN}) has been assigned to your nursing care by Reception.",
+                    Type = "OrderAction",
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
+
+            await _context.SaveChangesAsync();
+
+            var currentStaffId = User.FindFirst("staff_id")?.Value ?? "SYSTEM";
+            var currentStaffName = User.Identity?.Name ?? "Receptionist";
+            var role = User.FindFirst(ClaimTypes.Role)?.Value ?? "Receptionist";
+
+            await _auditService.LogAsync(
+                currentStaffId,
+                currentStaffName,
+                role,
+                "ASSIGN_PATIENT",
+                "Patient",
+                patient.Id.ToString(),
+                $"Assigned patient {patient.FirstName} {patient.LastName} ({patient.MRN}) to Doctor: {(newDoctor != null ? newDoctor.FirstName + " " + newDoctor.LastName : "Unchanged")}, Nurse: {(newNurse != null ? newNurse.FirstName + " " + newNurse.LastName : "Unchanged")}"
+            );
+
+            return Ok(new
+            {
+                message = "Patient assignment updated successfully.",
+                patientId = patient.Id,
+                primaryDoctorId = patient.PrimaryDoctorId,
+                primaryDoctor = newDoctor != null ? new { newDoctor.Id, newDoctor.StaffId, newDoctor.FirstName, newDoctor.LastName } : (patient.PrimaryDoctor != null ? new { patient.PrimaryDoctor.Id, patient.PrimaryDoctor.StaffId, patient.PrimaryDoctor.FirstName, patient.PrimaryDoctor.LastName } : null),
+                primaryNurseId = patient.PrimaryNurseId,
+                primaryNurse = newNurse != null ? new { newNurse.Id, newNurse.StaffId, newNurse.FirstName, newNurse.LastName } : (patient.PrimaryNurse != null ? new { patient.PrimaryNurse.Id, patient.PrimaryNurse.StaffId, patient.PrimaryNurse.FirstName, patient.PrimaryNurse.LastName } : null)
             });
         }
     }

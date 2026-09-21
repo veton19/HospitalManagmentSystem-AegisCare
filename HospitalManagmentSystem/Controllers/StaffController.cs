@@ -12,7 +12,7 @@ namespace HospitalManagmentSystem.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize(Roles = "Admin")]
+    [Authorize]
     public class StaffController : ControllerBase
     {
         private readonly HospitalDbContext _context;
@@ -26,12 +26,45 @@ namespace HospitalManagmentSystem.Controllers
             _auditService = auditService;
         }
 
+        [HttpGet("directory")]
+        public async Task<IActionResult> GetStaffDirectory()
+        {
+            var doctorsAndNurses = await _context.Staff
+                .Where(s => s.IsActive && (s.RoleCode == 20 || s.RoleCode == 30))
+                .Include(s => s.DoctorDetail)
+                .Include(s => s.NurseDetail)
+                .OrderBy(s => s.RoleCode)
+                .ThenBy(s => s.LastName)
+                .Select(s => new
+                {
+                    s.Id,
+                    s.StaffId,
+                    s.RoleCode,
+                    s.Role,
+                    s.FirstName,
+                    s.LastName,
+                    s.Email,
+                    s.PhoneNumber,
+                    Specialty = s.DoctorDetail != null ? s.DoctorDetail.Specialty : null,
+                    DepartmentId = s.DoctorDetail != null ? s.DoctorDetail.DepartmentId : (s.NurseDetail != null ? s.NurseDetail.DepartmentId : null),
+                    ShiftType = s.NurseDetail != null ? s.NurseDetail.ShiftType : null,
+                    PatientCount = s.RoleCode == 20
+                        ? _context.Patients.Count(p => p.PrimaryDoctorId == s.Id)
+                        : _context.Patients.Count(p => p.PrimaryNurseId == s.Id)
+                })
+                .ToListAsync();
+
+            return Ok(doctorsAndNurses);
+        }
+
         [HttpGet]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetAllStaff()
         {
             var staffList = await _context.Staff
                 .Include(s => s.DoctorDetail)
                 .Include(s => s.NurseDetail)
+                .Include(s => s.PharmacistDetail)
                 .Include(s => s.AdminDetail)
                 .OrderBy(s => s.RoleCode)
                 .ThenBy(s => s.StaffId)
@@ -48,8 +81,11 @@ namespace HospitalManagmentSystem.Controllers
                     s.IsActive,
                     s.CreatedAt,
                     Specialty = s.DoctorDetail != null ? s.DoctorDetail.Specialty : null,
-                    LicenseNumber = s.DoctorDetail != null ? s.DoctorDetail.LicenseNumber : (s.NurseDetail != null ? s.NurseDetail.LicenseNumber : null),
-                    ShiftType = s.NurseDetail != null ? s.NurseDetail.ShiftType : null
+                    LicenseNumber = s.DoctorDetail != null ? s.DoctorDetail.LicenseNumber
+                        : (s.NurseDetail != null ? s.NurseDetail.LicenseNumber
+                        : (s.PharmacistDetail != null ? s.PharmacistDetail.LicenseNumber : null)),
+                    ShiftType = s.NurseDetail != null ? s.NurseDetail.ShiftType
+                        : (s.PharmacistDetail != null ? s.PharmacistDetail.ShiftType : null)
                 })
                 .ToListAsync();
 
@@ -71,6 +107,7 @@ namespace HospitalManagmentSystem.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> CreateStaff([FromBody] CreateStaffRequest request)
         {
             if (string.IsNullOrWhiteSpace(request.FirstName) || string.IsNullOrWhiteSpace(request.LastName) || string.IsNullOrWhiteSpace(request.Password))
@@ -133,6 +170,16 @@ namespace HospitalManagmentSystem.Controllers
                     ShiftType = request.ShiftType ?? "Day"
                 });
             }
+            else if (request.RoleCode == 40)
+            {
+                _context.PharmacistDetails.Add(new PharmacistDetail
+                {
+                    StaffId = staff.Id,
+                    LicenseNumber = request.LicenseNumber ?? $"PHARM-{staffId}",
+                    DepartmentId = request.DepartmentId,
+                    ShiftType = request.ShiftType ?? "Day"
+                });
+            }
 
             await _context.SaveChangesAsync();
 
@@ -162,6 +209,7 @@ namespace HospitalManagmentSystem.Controllers
         }
 
         [HttpPut("{id}/status")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> ToggleStaffStatus(Guid id, [FromBody] bool isActive)
         {
             var staff = await _context.Staff.FindAsync(id);

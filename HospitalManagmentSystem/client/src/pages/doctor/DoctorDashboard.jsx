@@ -23,8 +23,10 @@ export const DoctorDashboard = () => {
 
   // Form Inputs
   const [soapData, setSoapData] = useState({ subjective: '', objective: '', assessment: '', plan: '', icd10: 'I10' });
-  const [rxData, setRxData] = useState({ drugName: '', dosage: '500mg', frequency: 'Twice daily', duration: '7 Days' });
+  const [rxData, setRxData] = useState({ drugName: '', dosage: '500mg', frequency: 'Twice daily', duration: '7 Days', quantity: 1 });
   const [rxCheckAlert, setRxCheckAlert] = useState(null);
+  const [rxStockResult, setRxStockResult] = useState(null);
+  const [rxStockChecking, setRxStockChecking] = useState(false);
   const [labData, setLabData] = useState({ testName: 'Complete Blood Count (CBC)', category: 'Hematology' });
   const [adtData, setAdtData] = useState({ ward: 'Cardiology Ward A', bedNumber: 'Bed-105', notes: '' });
 
@@ -139,6 +141,24 @@ export const DoctorDashboard = () => {
     }
   };
 
+  // Pharmacy stock check before prescribing
+  const handleCheckStock = async () => {
+    if (!rxData.drugName) return;
+    setRxStockChecking(true);
+    setRxStockResult(null);
+    try {
+      const qty = parseInt(rxData.quantity, 10) || 1;
+      const res = await fetch(
+        `/api/pharmacy/stock?drugName=${encodeURIComponent(rxData.drugName)}&quantity=${qty}`,
+        { headers: { 'Authorization': `Bearer ${token}` } }
+      );
+      if (res.ok) setRxStockResult(await res.json());
+    } catch (err) {
+      console.error('Stock check failed:', err);
+    }
+    setRxStockChecking(false);
+  };
+
   // Submit e-Prescription
   const handleSavePrescription = async (e) => {
     e.preventDefault();
@@ -157,15 +177,20 @@ export const DoctorDashboard = () => {
           drugName: rxData.drugName,
           dosage: rxData.dosage,
           frequency: rxData.frequency,
-          duration: rxData.duration
+          duration: rxData.duration,
+          quantityRequested: parseInt(rxData.quantity, 10) || 1
         })
       });
 
       if (res.ok) {
         setShowRxModal(false);
-        setRxData({ drugName: '', dosage: '500mg', frequency: 'Twice daily', duration: '7 Days' });
+        setRxData({ drugName: '', dosage: '500mg', frequency: 'Twice daily', duration: '7 Days', quantity: 1 });
         setRxCheckAlert(null);
+        setRxStockResult(null);
         loadPatientChart(selectedPatientChart.patient.id);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        alert(err.message || 'Failed to issue prescription.');
       }
     } catch (err) {
       console.error('Failed to issue prescription:', err);
@@ -492,32 +517,78 @@ export const DoctorDashboard = () => {
 
                   {/* Lab Results with Abnormal Flags */}
                   <div className="space-y-3">
-                    <h4 className="text-sm font-bold text-slate-200 border-b border-slate-800 pb-2 flex items-center gap-2">
-                      <FlaskConical className="w-4 h-4 text-amber-400" /> Lab Results & Abnormal Flags
+                    <h4 className="text-sm font-bold text-slate-200 border-b border-slate-800 pb-2 flex items-center justify-between gap-2">
+                      <span className="flex items-center gap-2">
+                        <FlaskConical className="w-4 h-4 text-amber-400" /> Lab Results & History
+                      </span>
+                      <span className="text-xs font-normal text-slate-400">{selectedPatientChart.labOrders.length} Orders</span>
                     </h4>
-                    <div className="space-y-2">
-                      {selectedPatientChart.labOrders.map((lab) => (
-                        <div key={lab.id} className="p-3 rounded-xl bg-slate-900/60 border border-slate-800 text-xs space-y-1">
-                          <div className="flex items-center justify-between">
-                            <span className="font-semibold text-slate-200">{lab.testName}</span>
-                            <span className={`text-[10px] px-2 py-0.5 rounded font-semibold ${lab.status === 'Completed' ? 'bg-teal-500/20 text-teal-300' : 'bg-amber-500/20 text-amber-300'}`}>
-                              {lab.status}
-                            </span>
-                          </div>
-                          {lab.result ? (
-                            <div className="flex items-center justify-between pt-1 font-mono">
-                              <span className="text-slate-300">{lab.result.value} {lab.result.unit}</span>
-                              {lab.result.isAbnormal && (
-                                <span className="badge-abnormal text-[10px] px-2 py-0.5 rounded font-bold flex items-center gap-1">
-                                  <AlertTriangle className="w-3 h-3" /> ABNORMAL (Ref: {lab.result.referenceRange})
+                    <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+                      {selectedPatientChart.labOrders.length === 0 ? (
+                        <p className="text-xs text-slate-500 py-3">No lab orders yet.</p>
+                      ) : (
+                        selectedPatientChart.labOrders.map((lab) => (
+                          <div
+                            key={lab.id}
+                            className={`p-3 rounded-xl border text-xs space-y-1.5 ${
+                              lab.result?.isCritical
+                                ? 'bg-rose-500/10 border-rose-500/40'
+                                : lab.result?.isAbnormal
+                                ? 'bg-amber-500/10 border-amber-500/30'
+                                : 'bg-slate-900/60 border-slate-800'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between gap-2 flex-wrap">
+                              <span className="font-semibold text-slate-200">{lab.testName}</span>
+                              <div className="flex items-center gap-1.5">
+                                {lab.result?.isCritical && (
+                                  <span className="text-[10px] px-2 py-0.5 rounded bg-rose-500/30 text-rose-300 font-bold animate-pulse border border-rose-500/40">
+                                    CRITICAL
+                                  </span>
+                                )}
+                                {lab.result?.isAbnormal && !lab.result?.isCritical && (
+                                  <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30 flex items-center gap-1">
+                                    <AlertTriangle className="w-3 h-3" /> ABNORMAL
+                                  </span>
+                                )}
+                                <span className={`text-[10px] px-2 py-0.5 rounded font-semibold ${lab.status === 'Completed' ? 'bg-teal-500/20 text-teal-300' : 'bg-amber-500/20 text-amber-300'}`}>
+                                  {lab.status}
                                 </span>
+                              </div>
+                            </div>
+
+                            <div className="text-slate-500 text-[10px] flex items-center gap-3">
+                              <span>Ordered: {new Date(lab.orderDate).toLocaleDateString()}</span>
+                              {lab.result && (
+                                <span>Resulted: {new Date(lab.result.resultDate).toLocaleDateString()}</span>
                               )}
                             </div>
-                          ) : (
-                            <div className="text-slate-500 italic">Result pending lab tech analysis...</div>
-                          )}
-                        </div>
-                      ))}
+
+                            {lab.result ? (
+                              <div className="space-y-0.5">
+                                <div className="flex items-center gap-3 font-mono">
+                                  <span className="text-slate-100 font-bold text-sm">
+                                    {lab.result.value} {lab.result.unit}
+                                  </span>
+                                  <span className="text-slate-400 text-[10px]">
+                                    Ref: {lab.result.referenceRange}
+                                  </span>
+                                </div>
+                                {lab.result.notes && (
+                                  <div className="text-slate-400 italic text-[10px]">
+                                    Note: {lab.result.notes}
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1.5 text-slate-500 italic">
+                                <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                                Awaiting lab technician analysis...
+                              </div>
+                            )}
+                          </div>
+                        ))
+                      )}
                     </div>
                   </div>
                 </div>
@@ -622,13 +693,14 @@ export const DoctorDashboard = () => {
               <Pill className="w-5 h-5 text-emerald-400" /> e-Prescribe Medication
             </h3>
             <form onSubmit={handleSavePrescription} className="space-y-3 text-xs">
+              {/* Drug Name + Allergy check */}
               <div>
                 <label className="block text-slate-400 font-semibold mb-1">Drug Name</label>
                 <div className="flex gap-2">
                   <input
                     type="text"
                     value={rxData.drugName}
-                    onChange={(e) => setRxData({ ...rxData, drugName: e.target.value })}
+                    onChange={(e) => { setRxData({ ...rxData, drugName: e.target.value }); setRxStockResult(null); }}
                     placeholder="e.g. Lisinopril, Penicillin"
                     className="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-slate-100 focus:outline-none focus:border-emerald-400"
                     required
@@ -638,7 +710,7 @@ export const DoctorDashboard = () => {
                     onClick={handleCheckInteraction}
                     className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-300 text-xs font-semibold shrink-0"
                   >
-                    Check Allergy
+                    Allergy
                   </button>
                 </div>
               </div>
@@ -647,6 +719,52 @@ export const DoctorDashboard = () => {
                 <div className={`p-3 rounded-xl text-xs border ${rxCheckAlert.passed ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300' : 'bg-rose-500/20 border-rose-500/40 text-rose-300 animate-pulse'}`}>
                   {rxCheckAlert.message}
                 </div>
+              )}
+
+              {/* Quantity + stock check */}
+              <div>
+                <label className="block text-slate-400 font-semibold mb-1">Quantity Requested</label>
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    min="1"
+                    value={rxData.quantity}
+                    onChange={(e) => { setRxData({ ...rxData, quantity: e.target.value }); setRxStockResult(null); }}
+                    className="w-28 bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-slate-100 focus:outline-none focus:border-emerald-400"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleCheckStock}
+                    disabled={!rxData.drugName || rxStockChecking}
+                    className="flex-1 px-3 py-2 rounded-xl bg-violet-500/20 hover:bg-violet-500/30 text-violet-200 border border-violet-500/40 text-xs font-semibold disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-1.5"
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    {rxStockChecking ? 'Checking…' : 'Check Pharmacy Stock'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Stock result banner */}
+              {rxStockResult && (
+                <div className={`p-3 rounded-xl text-xs border ${
+                  rxStockResult.inStock
+                    ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300'
+                    : 'bg-rose-500/20 border-rose-500/40 text-rose-300'
+                }`}>
+                  <div className="font-semibold">{rxStockResult.message}</div>
+                  {rxStockResult.inStock && (
+                    <div className="text-slate-400 mt-0.5">
+                      Available: {rxStockResult.available} {rxStockResult.unit} · After reserve: {rxStockResult.available - rxStockResult.requested} {rxStockResult.unit}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {!rxStockResult && (
+                <p className="text-[11px] text-slate-500 flex items-center gap-1">
+                  <AlertTriangle className="w-3 h-3 text-amber-500" />
+                  Click "Check Pharmacy Stock" to verify availability before prescribing.
+                </p>
               )}
 
               <div className="grid grid-cols-3 gap-2">
@@ -665,13 +783,27 @@ export const DoctorDashboard = () => {
               </div>
 
               <div className="flex justify-end gap-2 pt-2">
-                <button type="button" onClick={() => setShowRxModal(false)} className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300">Cancel</button>
-                <button type="submit" className="px-4 py-2 rounded-xl bg-emerald-500 text-slate-950 font-bold">Issue e-Rx</button>
+                <button
+                  type="button"
+                  onClick={() => { setShowRxModal(false); setRxStockResult(null); }}
+                  className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={rxStockResult && !rxStockResult.inStock}
+                  className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 disabled:cursor-not-allowed text-slate-950 font-bold transition-colors"
+                  title={rxStockResult && !rxStockResult.inStock ? 'Cannot prescribe — insufficient stock' : ''}
+                >
+                  Issue e-Rx
+                </button>
               </div>
             </form>
           </div>
         </div>
       )}
+
 
       {/* LAB ORDER MODAL */}
       {showLabModal && (

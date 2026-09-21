@@ -7,7 +7,10 @@ import { Sidebar } from './components/Sidebar';
 import { Login } from './pages/Login';
 import { DoctorDashboard } from './pages/doctor/DoctorDashboard';
 import { NurseDashboard } from './pages/nurse/NurseDashboard';
+import { PharmacistDashboard } from './pages/pharmacist/PharmacistDashboard';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
+import { LabTechDashboard } from './pages/labtech/LabTechDashboard';
+import { ReceptionistDashboard } from './pages/receptionist/ReceptionistDashboard';
 
 const MainLayout = ({ children }) => (
   <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100">
@@ -35,6 +38,21 @@ export default function App() {
         {/* Nurse Security Boundary */}
         <Route element={<RoleGuard allowedRoles={['Nurse', 'Admin']} />}>
           <Route path="/nurse/*" element={<MainLayout><NurseDashboard /></MainLayout>} />
+        </Route>
+
+        {/* Pharmacist Security Boundary */}
+        <Route element={<RoleGuard allowedRoles={['Pharmacist', 'Admin']} />}>
+          <Route path="/pharmacist/*" element={<MainLayout><PharmacistDashboard /></MainLayout>} />
+        </Route>
+
+        {/* Lab Technician Security Boundary */}
+        <Route element={<RoleGuard allowedRoles={['LabTech', 'Admin']} />}>
+          <Route path="/labtech/*" element={<MainLayout><LabTechDashboard /></MainLayout>} />
+        </Route>
+
+        {/* Receptionist Security Boundary */}
+        <Route element={<RoleGuard allowedRoles={['Receptionist', 'Admin']} />}>
+          <Route path="/receptionist/*" element={<MainLayout><ReceptionistDashboard /></MainLayout>} />
         </Route>
 
         {/* Admin Security Boundary */}

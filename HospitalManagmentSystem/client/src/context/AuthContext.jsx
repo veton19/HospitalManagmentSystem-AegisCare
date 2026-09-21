@@ -75,6 +75,9 @@ export const AuthProvider = ({ children }) => {
     if (role === 'Admin') return '/admin';
     if (role === 'Doctor') return '/doctor';
     if (role === 'Nurse') return '/nurse';
+    if (role === 'Pharmacist') return '/pharmacist';
+    if (role === 'LabTech') return '/labtech';
+    if (role === 'Receptionist') return '/receptionist';
     return '/login';
   };
 

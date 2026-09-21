@@ -3,6 +3,7 @@ using System;
 using HospitalManagmentSystem.DBContext;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace HospitalManagmentSystem.Migrations
 {
     [DbContext(typeof(HospitalDbContext))]
-    partial class HospitalDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260912132448_AddPharmacyEntitiesAndPharmacist")]
+    partial class AddPharmacyEntitiesAndPharmacist
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -782,17 +785,12 @@ namespace HospitalManagmentSystem.Migrations
                     b.Property<Guid?>("PrimaryDoctorId")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid?>("PrimaryNurseId")
-                        .HasColumnType("uuid");
-
                     b.HasKey("Id");
 
                     b.HasIndex("MRN")
                         .IsUnique();
 
                     b.HasIndex("PrimaryDoctorId");
-
-                    b.HasIndex("PrimaryNurseId");
 
                     b.ToTable("Patients");
                 });
@@ -1387,14 +1385,7 @@ namespace HospitalManagmentSystem.Migrations
                         .HasForeignKey("PrimaryDoctorId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("HospitalManagmentSystem.Models.Staff", "PrimaryNurse")
-                        .WithMany()
-                        .HasForeignKey("PrimaryNurseId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
                     b.Navigation("PrimaryDoctor");
-
-                    b.Navigation("PrimaryNurse");
                 });
 
             modelBuilder.Entity("HospitalManagmentSystem.Models.PharmacistDetail", b =>

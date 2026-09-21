@@ -45,6 +45,7 @@ namespace HospitalManagmentSystem.Models
         public AdminDetail? AdminDetail { get; set; }
         public DoctorDetail? DoctorDetail { get; set; }
         public NurseDetail? NurseDetail { get; set; }
+        public PharmacistDetail? PharmacistDetail { get; set; }
     }
 
     public class StaffRoleSequence

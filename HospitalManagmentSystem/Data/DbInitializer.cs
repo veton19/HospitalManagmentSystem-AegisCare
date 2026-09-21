@@ -22,7 +22,8 @@ namespace HospitalManagmentSystem.Data
                     new Department { Name = "Emergency", Code = "EMERG", Location = "Ground Floor" },
                     new Department { Name = "Neurology", Code = "NEURO", Location = "Wing B, Floor 3" },
                     new Department { Name = "Pediatrics", Code = "PED", Location = "Wing C, Floor 1" },
-                    new Department { Name = "Orthopedics", Code = "ORTHO", Location = "Wing A, Floor 4" }
+                    new Department { Name = "Orthopedics", Code = "ORTHO", Location = "Wing A, Floor 4" },
+                    new Department { Name = "Pharmacy", Code = "PHARM", Location = "Ground Floor, Dispensary" }
                 };
                 context.Departments.AddRange(departments);
                 await context.SaveChangesAsync();
@@ -33,10 +34,18 @@ namespace HospitalManagmentSystem.Data
             var emergDept = await context.Departments.FirstAsync(d => d.Code == "EMERG");
             var pedDept = await context.Departments.FirstAsync(d => d.Code == "PED");
             var orthoDept = await context.Departments.FirstAsync(d => d.Code == "ORTHO");
+            var pharmDept = await context.Departments.FirstOrDefaultAsync(d => d.Code == "PHARM");
+            if (pharmDept == null)
+            {
+                pharmDept = new Department { Name = "Pharmacy", Code = "PHARM", Location = "Ground Floor, Dispensary" };
+                context.Departments.Add(pharmDept);
+                await context.SaveChangesAsync();
+            }
 
             string adminPass = BCrypt.Net.BCrypt.HashPassword("Admin123!");
             string doctorPass = BCrypt.Net.BCrypt.HashPassword("Doctor123!");
             string nursePass = BCrypt.Net.BCrypt.HashPassword("Nurse123!");
+            string pharmacistPass = BCrypt.Net.BCrypt.HashPassword("Pharmacist123!");
 
             // Seed initial Staff (Admin, 2 Doctors, 2 Nurses) if completely empty
             if (!context.Staff.Any())
@@ -246,6 +255,140 @@ namespace HospitalManagmentSystem.Data
 
             await context.SaveChangesAsync();
 
+            var pharmacistsToSeed = new[]
+            {
+                new { StaffId = "400001", FirstName = "Elizabeth", LastName = "Gookin", Email = "gookin@hospital.org", Phone = "+1-555-0401", License = "PHARM-40101", Shift = "Day" },
+                new { StaffId = "400002", FirstName = "Harvey", LastName = "Whitney", Email = "whitney@hospital.org", Phone = "+1-555-0402", License = "PHARM-40202", Shift = "Night" },
+                new { StaffId = "400003", FirstName = "Joseph", LastName = "Remington", Email = "remington@hospital.org", Phone = "+1-555-0403", License = "PHARM-40303", Shift = "Rotating" }
+            };
+
+            foreach (var p in pharmacistsToSeed)
+            {
+                var existingStaff = await context.Staff
+                    .Include(s => s.PharmacistDetail)
+                    .FirstOrDefaultAsync(s => s.StaffId == p.StaffId);
+
+                if (existingStaff == null)
+                {
+                    var staff = new Staff
+                    {
+                        StaffId = p.StaffId,
+                        RoleCode = 40,
+                        Role = "Pharmacist",
+                        FirstName = p.FirstName,
+                        LastName = p.LastName,
+                        Email = p.Email,
+                        PhoneNumber = p.Phone,
+                        PasswordHash = pharmacistPass,
+                        IsActive = true
+                    };
+                    context.Staff.Add(staff);
+                    context.PharmacistDetails.Add(new PharmacistDetail
+                    {
+                        StaffId = staff.Id,
+                        LicenseNumber = p.License,
+                        DepartmentId = pharmDept.Id,
+                        ShiftType = p.Shift
+                    });
+                }
+                else
+                {
+                    existingStaff.IsActive = true;
+                    existingStaff.PasswordHash = pharmacistPass;
+                    if (existingStaff.PharmacistDetail == null)
+                    {
+                        context.PharmacistDetails.Add(new PharmacistDetail
+                        {
+                            StaffId = existingStaff.Id,
+                            LicenseNumber = p.License,
+                            DepartmentId = pharmDept.Id,
+                            ShiftType = p.Shift
+                        });
+                    }
+                }
+            }
+
+            await context.SaveChangesAsync();
+
+            var seq40 = await context.StaffRoleSequences.FindAsync(40);
+            if (seq40 != null && seq40.LastSequenceNumber < 3) seq40.LastSequenceNumber = 3;
+            await context.SaveChangesAsync();
+
+            // Seed default Lab Technician (500001) if not present
+            string labTechPass = BCrypt.Net.BCrypt.HashPassword("LabTech123!");
+            var existingLabTech = await context.Staff.FirstOrDefaultAsync(s => s.StaffId == "500001");
+            if (existingLabTech == null)
+            {
+                var labTechStaff = new Staff
+                {
+                    StaffId = "500001",
+                    RoleCode = 50,
+                    Role = "LabTech",
+                    FirstName = "Rosalind",
+                    LastName = "Franklin",
+                    Email = "franklin@hospital.org",
+                    PhoneNumber = "+1-555-0501",
+                    PasswordHash = labTechPass,
+                    IsActive = true
+                };
+                context.Staff.Add(labTechStaff);
+            }
+            else
+            {
+                existingLabTech.IsActive = true;
+                existingLabTech.PasswordHash = labTechPass;
+            }
+
+            var seq50 = await context.StaffRoleSequences.FindAsync(50);
+            if (seq50 != null && seq50.LastSequenceNumber < 1) seq50.LastSequenceNumber = 1;
+            await context.SaveChangesAsync();
+
+            // Seed default Receptionist (600001) if not present
+            string receptionistPass = BCrypt.Net.BCrypt.HashPassword("Receptionist123!");
+            var existingReceptionist = await context.Staff.FirstOrDefaultAsync(s => s.StaffId == "600001");
+            if (existingReceptionist == null)
+            {
+                var receptionistStaff = new Staff
+                {
+                    StaffId = "600001",
+                    RoleCode = 60,
+                    Role = "Receptionist",
+                    FirstName = "Grace",
+                    LastName = "Hopper",
+                    Email = "hopper@hospital.org",
+                    PhoneNumber = "+1-555-0601",
+                    PasswordHash = receptionistPass,
+                    IsActive = true
+                };
+                context.Staff.Add(receptionistStaff);
+            }
+            else
+            {
+                existingReceptionist.IsActive = true;
+                existingReceptionist.PasswordHash = receptionistPass;
+            }
+
+            var seq60 = await context.StaffRoleSequences.FindAsync(60);
+            if (seq60 != null && seq60.LastSequenceNumber < 1) seq60.LastSequenceNumber = 1;
+            await context.SaveChangesAsync();
+
+            if (!context.Medications.Any())
+            {
+                context.Medications.AddRange(
+                    new Medication { Name = "Lisinopril", Strength = "10mg", Form = "Tablet", Unit = "tablets", QuantityOnHand = 240, ReorderLevel = 40, Category = "Cardiovascular" },
+                    new Medication { Name = "Atorvastatin", Strength = "20mg", Form = "Tablet", Unit = "tablets", QuantityOnHand = 180, ReorderLevel = 30, Category = "Cardiovascular" },
+                    new Medication { Name = "Amoxicillin", Strength = "250mg", Form = "Capsule", Unit = "capsules", QuantityOnHand = 90, ReorderLevel = 25, Category = "Antibiotic" },
+                    new Medication { Name = "Metoprolol", Strength = "25mg", Form = "Tablet", Unit = "tablets", QuantityOnHand = 150, ReorderLevel = 30, Category = "Cardiovascular" },
+                    new Medication { Name = "Furosemide", Strength = "40mg", Form = "Vial", Unit = "vials", QuantityOnHand = 48, ReorderLevel = 12, Category = "Diuretic" },
+                    new Medication { Name = "Morphine", Strength = "5mg", Form = "Ampoule", Unit = "ampoules", QuantityOnHand = 22, ReorderLevel = 8, Category = "Analgesic" },
+                    new Medication { Name = "Levetiracetam", Strength = "500mg", Form = "Tablet", Unit = "tablets", QuantityOnHand = 110, ReorderLevel = 20, Category = "Neurology" },
+                    new Medication { Name = "Enoxaparin", Strength = "40mg", Form = "Syringe", Unit = "syringes", QuantityOnHand = 36, ReorderLevel = 10, Category = "Anticoagulant" },
+                    new Medication { Name = "Salbutamol", Strength = "2.5mg", Form = "Nebule", Unit = "nebules", QuantityOnHand = 60, ReorderLevel = 15, Category = "Respiratory" },
+                    new Medication { Name = "Paracetamol", Strength = "500mg", Form = "Tablet", Unit = "tablets", QuantityOnHand = 400, ReorderLevel = 80, Category = "Analgesic" }
+                );
+                await context.SaveChangesAsync();
+            }
+
             // Seed initial 3 Patients if completely empty
             if (!context.Patients.Any())
             {
@@ -436,7 +579,40 @@ namespace HospitalManagmentSystem.Data
             }
 
             await AssignPatientsToDoctorsAsync(context);
+            await AssignPatientsToNursesAsync(context);
+            await SeedPendingMedicationRequestsAsync(context);
         }
+
+        private static async Task SeedPendingMedicationRequestsAsync(HospitalDbContext context)
+        {
+            if (await context.MedicationRequests.AnyAsync() || !await context.Prescriptions.AnyAsync())
+                return;
+
+            var prescriptions = await context.Prescriptions.ToListAsync();
+            var meds = await context.Medications.ToListAsync();
+            foreach (var rx in prescriptions)
+            {
+                var med = meds.FirstOrDefault(m =>
+                    m.Name.Equals(rx.DrugName, StringComparison.OrdinalIgnoreCase));
+                if (med == null) continue;
+
+                rx.QuantityRequested = Math.Max(1, rx.QuantityRequested);
+                rx.PharmacyStatus = "Pending";
+                context.MedicationRequests.Add(new MedicationRequest
+                {
+                    PrescriptionId = rx.Id,
+                    MedicationId = med.Id,
+                    PatientId = rx.PatientId,
+                    DoctorId = rx.DoctorId,
+                    QuantityRequested = rx.QuantityRequested,
+                    Status = "Pending",
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
+
+            await context.SaveChangesAsync();
+        }
+
 
         private static async Task AssignPatientsToDoctorsAsync(HospitalDbContext context)
         {
@@ -486,6 +662,181 @@ namespace HospitalManagmentSystem.Data
                         Notes = $"Assigned to Dr. {doctor.LastName}"
                     });
                     appointmentKeys.Add((patients[i].Id, doctor.Id));
+                }
+            }
+
+            await context.SaveChangesAsync();
+        }
+
+        private static async Task AssignPatientsToNursesAsync(HospitalDbContext context)
+        {
+            // Already seeded nurse tasks?
+            if (await context.CarePlanTasks.AnyAsync(t => t.AssignedNurseId != Guid.Empty
+                && context.Staff.Any(s => s.Id == t.AssignedNurseId && s.RoleCode == 30 && s.StaffId != "300001")))
+                return;
+
+            var nurses = await context.Staff
+                .Include(s => s.NurseDetail)
+                .Where(s => s.RoleCode == 30 && s.IsActive)
+                .OrderBy(s => s.StaffId)
+                .ToListAsync();
+
+            if (nurses.Count == 0) return;
+
+            var patients = await context.Patients.OrderBy(p => p.Id).ToListAsync();
+            if (patients.Count == 0) return;
+
+            var doctors = await context.Staff
+                .Where(s => s.RoleCode == 20 && s.IsActive)
+                .OrderBy(s => s.StaffId)
+                .ToListAsync();
+
+            // Ward names keyed by department name fragment
+            var wardMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                { "Emergency",    "Emergency Ward" },
+                { "Cardiology",   "Cardiology Inpatient Ward A" },
+                { "Neurology",    "Neurology Ward B" },
+                { "Pediatrics",   "Pediatrics Ward C" },
+                { "Orthopedics",  "Orthopedics Ward D" },
+            };
+
+            // Task templates per nurse (index 0..9 maps to nurses sorted by StaffId)
+            var taskTemplates = new[]
+            {
+                // Nurse 0 — Florence Nightingale (Emergency)
+                new[] {
+                    "Check Q4H Vitals & SpO2",
+                    "Administer Morning Lisinopril 10mg",
+                    "Wound Dressing Change — Left Forearm"
+                },
+                // Nurse 1 — Clara Barton (Cardiology)
+                new[] {
+                    "Cardiac Monitor Review & Rhythm Strip",
+                    "Administer IV Furosemide 40mg",
+                    "Patient Education: Low-Sodium Diet"
+                },
+                // Nurse 2 — Mary Eliza Mahoney (Pediatrics)
+                new[] {
+                    "Pediatric Weight & Growth Chart Update",
+                    "Administer Amoxicillin 250mg PO",
+                    "Pain Assessment (FLACC Scale)"
+                },
+                // Nurse 3 — Edith Cavell (Emergency)
+                new[] {
+                    "Triage Reassessment & Priority Update",
+                    "IV Line Flush & Site Inspection",
+                    "Collect Blood Culture Samples"
+                },
+                // Nurse 4 — Hazel Johnson-Brown (Orthopedics)
+                new[] {
+                    "Post-Op Neurovascular Check (Hourly)",
+                    "Apply Cold Pack to Left Knee",
+                    "Administer Morphine 5mg IV PRN"
+                },
+                // Nurse 5 — Margaret Sanger (Cardiology)
+                new[] {
+                    "12-Lead ECG Recording",
+                    "Administer Evening Metoprolol 25mg",
+                    "Daily Weight & Fluid Balance Chart"
+                },
+                // Nurse 6 — Dorothea Dix (Neurology)
+                new[] {
+                    "Neuro Observations (GCS) Q2H",
+                    "Administer Levetiracetam 500mg",
+                    "Seizure Precaution Environment Check"
+                },
+                // Nurse 7 — Mary Breckinridge (Pediatrics)
+                new[] {
+                    "Infant Feeding Log & Latch Assessment",
+                    "Administer Vitamin D 400IU Drops",
+                    "Neonatal Jaundice Bili-Light Check"
+                },
+                // Nurse 8 — Lillian Wald (Emergency)
+                new[] {
+                    "Rapid Glucose Check (BGL)",
+                    "Administer Salbutamol Nebulisation",
+                    "Urine Output Measurement & Catheter Care"
+                },
+                // Nurse 9 — Walt Whitman (Orthopedics)
+                new[] {
+                    "Mobility Assessment & Ambulation Assist",
+                    "Administer Enoxaparin 40mg SC",
+                    "Pressure Sore Skin Integrity Check"
+                }
+            };
+
+            var existingAdmissions = await context.Admissions
+                .Select(a => a.PatientId)
+                .ToHashSetAsync();
+
+            var existingNurseTasks = await context.CarePlanTasks
+                .Select(t => t.AssignedNurseId)
+                .ToListAsync();
+
+            int bedCounter = 200; // Start new beds from 200 to avoid collisions
+
+            for (int i = 0; i < nurses.Count; i++)
+            {
+                var nurse = nurses[i];
+                var templates = taskTemplates[i % taskTemplates.Length];
+
+                // Determine this nurse's ward from their department
+                var dept = await context.Departments
+                    .FindAsync(nurse.NurseDetail?.DepartmentId);
+
+                string ward = "General Ward";
+                if (dept != null)
+                {
+                    foreach (var kv in wardMap)
+                        if (dept.Name.Contains(kv.Key, StringComparison.OrdinalIgnoreCase))
+                        { ward = kv.Value; break; }
+                }
+
+                // Assign 2–3 patients to this nurse (round-robin, skip already-admitted)
+                var assignedPatients = new List<Patient>();
+                for (int j = 0; j < patients.Count; j++)
+                {
+                    if (j % nurses.Count == i)
+                        assignedPatients.Add(patients[j]);
+                }
+
+                // Ensure this nurse has an attending doctor
+                var attendingDoctor = doctors.Count > 0 ? doctors[i % doctors.Count] : null;
+
+                for (int p = 0; p < assignedPatients.Count && p < 3; p++)
+                {
+                    var patient = assignedPatients[p];
+                    bedCounter++;
+
+                    // Create admission if not already admitted
+                    if (!existingAdmissions.Contains(patient.Id) && attendingDoctor != null)
+                    {
+                        context.Admissions.Add(new Admission
+                        {
+                            PatientId = patient.Id,
+                            AttendingDoctorId = attendingDoctor.Id,
+                            Ward = ward,
+                            BedNumber = $"Bed-{bedCounter}",
+                            AdmitDate = DateTime.UtcNow.AddDays(-(p + 1)),
+                            Status = "Admitted",
+                            AdmissionNotes = $"Admitted under the care of Nurse {nurse.LastName}."
+                        });
+                        existingAdmissions.Add(patient.Id);
+                    }
+
+                    // Add care plan tasks for this nurse & patient
+                    for (int t = 0; t < templates.Length; t++)
+                    {
+                        context.CarePlanTasks.Add(new CarePlanTask
+                        {
+                            PatientId = patient.Id,
+                            AssignedNurseId = nurse.Id,
+                            TaskDescription = templates[t],
+                            DueDate = DateTime.UtcNow.AddHours(2 + t * 2 + p),
+                            IsCompleted = false
+                        });
+                    }
                 }
             }
 

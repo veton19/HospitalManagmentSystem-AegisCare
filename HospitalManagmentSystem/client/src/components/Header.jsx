@@ -33,6 +33,7 @@ export const Header = () => {
     if (role === 'Admin') return 'badge-admin';
     if (role === 'Doctor') return 'badge-doctor';
     if (role === 'Nurse') return 'badge-nurse';
+    if (role === 'Pharmacist') return 'badge-pharmacist';
     return 'bg-slate-700 text-slate-200';
   };
 

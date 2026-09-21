@@ -98,6 +98,11 @@ namespace HospitalManagmentSystem.Models
         [MaxLength(30)]
         public string Status { get; set; } = "Active"; // Active, Discontinued, Completed
 
+        public int QuantityRequested { get; set; } = 1;
+
+        [MaxLength(30)]
+        public string PharmacyStatus { get; set; } = "Pending"; // Pending, Verified, ReleasedToNurse, Rejected
+
         public bool InteractionCheckPassed { get; set; } = true;
         public string InteractionAlerts { get; set; } = "None";
 
@@ -144,10 +149,12 @@ namespace HospitalManagmentSystem.Models
 
         public int LabOrderId { get; set; }
         [ForeignKey("LabOrderId")]
+        [System.Text.Json.Serialization.JsonIgnore]
         public LabOrder? LabOrder { get; set; }
 
         public int PatientId { get; set; }
         [ForeignKey("PatientId")]
+        [System.Text.Json.Serialization.JsonIgnore]
         public Patient? Patient { get; set; }
 
         [Required]

@@ -12,6 +12,7 @@ namespace HospitalManagmentSystem.DBContext
         public DbSet<AdminDetail> AdminDetails { get; set; }
         public DbSet<DoctorDetail> DoctorDetails { get; set; }
         public DbSet<NurseDetail> NurseDetails { get; set; }
+        public DbSet<PharmacistDetail> PharmacistDetails { get; set; }
 
         public DbSet<Patient> Patients { get; set; }
         public DbSet<Department> Departments { get; set; }
@@ -28,6 +29,8 @@ namespace HospitalManagmentSystem.DBContext
         public DbSet<MedicationAdministrationRecord> MedicationAdministrationRecords { get; set; }
         public DbSet<AuditLog> AuditLogs { get; set; }
         public DbSet<Notification> Notifications { get; set; }
+        public DbSet<Medication> Medications { get; set; }
+        public DbSet<MedicationRequest> MedicationRequests { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -48,6 +51,12 @@ namespace HospitalManagmentSystem.DBContext
                 .HasForeignKey(p => p.PrimaryDoctorId)
                 .OnDelete(DeleteBehavior.SetNull);
 
+            modelBuilder.Entity<Patient>()
+                .HasOne(p => p.PrimaryNurse)
+                .WithMany()
+                .HasForeignKey(p => p.PrimaryNurseId)
+                .OnDelete(DeleteBehavior.SetNull);
+
             // 1:1 relationships with Staff
             modelBuilder.Entity<Staff>()
                 .HasOne(s => s.AdminDetail)
@@ -66,6 +75,40 @@ namespace HospitalManagmentSystem.DBContext
                 .WithOne(n => n.Staff)
                 .HasForeignKey<NurseDetail>(n => n.StaffId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<Staff>()
+                .HasOne(s => s.PharmacistDetail)
+                .WithOne(p => p.Staff)
+                .HasForeignKey<PharmacistDetail>(p => p.StaffId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<Medication>()
+                .HasIndex(m => m.Name)
+                .IsUnique();
+
+            modelBuilder.Entity<MedicationRequest>()
+                .HasOne(r => r.Doctor)
+                .WithMany()
+                .HasForeignKey(r => r.DoctorId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<MedicationRequest>()
+                .HasOne(r => r.VerifiedByPharmacist)
+                .WithMany()
+                .HasForeignKey(r => r.VerifiedByPharmacistId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<MedicationRequest>()
+                .HasOne(r => r.ReleasedByPharmacist)
+                .WithMany()
+                .HasForeignKey(r => r.ReleasedByPharmacistId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<MedicationRequest>()
+                .HasOne(r => r.ReceivingNurse)
+                .WithMany()
+                .HasForeignKey(r => r.ReceivingNurseId)
+                .OnDelete(DeleteBehavior.Restrict);
 
             // Seed role sequence initial defaults (10=Admin, 20=Doctor, 30=Nurse, 40=Pharmacist, 50=LabTech, 60=Receptionist)
             modelBuilder.Entity<StaffRoleSequence>().HasData(

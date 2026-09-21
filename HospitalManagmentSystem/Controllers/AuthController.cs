@@ -62,6 +62,7 @@ namespace HospitalManagmentSystem.Controllers
             var staff = await _context.Staff
                 .Include(s => s.DoctorDetail)
                 .Include(s => s.NurseDetail)
+                .Include(s => s.PharmacistDetail)
                 .Include(s => s.AdminDetail)
                 .FirstOrDefaultAsync(s => s.StaffId == cleanStaffId);
 
@@ -104,7 +105,9 @@ namespace HospitalManagmentSystem.Controllers
                     lastName = staff.LastName,
                     email = staff.Email,
                     specialty = staff.DoctorDetail?.Specialty,
-                    departmentId = staff.DoctorDetail?.DepartmentId ?? staff.NurseDetail?.DepartmentId
+                    departmentId = staff.DoctorDetail?.DepartmentId ?? staff.NurseDetail?.DepartmentId ?? staff.PharmacistDetail?.DepartmentId,
+                    shiftType = staff.NurseDetail?.ShiftType ?? staff.PharmacistDetail?.ShiftType,
+                    licenseNumber = staff.DoctorDetail?.LicenseNumber ?? staff.NurseDetail?.LicenseNumber ?? staff.PharmacistDetail?.LicenseNumber
                 }
             });
         }
@@ -122,6 +125,7 @@ namespace HospitalManagmentSystem.Controllers
             var staff = await _context.Staff
                 .Include(s => s.DoctorDetail)
                 .Include(s => s.NurseDetail)
+                .Include(s => s.PharmacistDetail)
                 .Include(s => s.AdminDetail)
                 .FirstOrDefaultAsync(s => s.StaffId == staffIdClaim);
 
@@ -141,8 +145,9 @@ namespace HospitalManagmentSystem.Controllers
                 email = staff.Email,
                 phoneNumber = staff.PhoneNumber,
                 specialty = staff.DoctorDetail?.Specialty,
-                licenseNumber = staff.DoctorDetail?.LicenseNumber ?? staff.NurseDetail?.LicenseNumber,
-                departmentId = staff.DoctorDetail?.DepartmentId ?? staff.NurseDetail?.DepartmentId
+                licenseNumber = staff.DoctorDetail?.LicenseNumber ?? staff.NurseDetail?.LicenseNumber ?? staff.PharmacistDetail?.LicenseNumber,
+                departmentId = staff.DoctorDetail?.DepartmentId ?? staff.NurseDetail?.DepartmentId ?? staff.PharmacistDetail?.DepartmentId,
+                shiftType = staff.NurseDetail?.ShiftType ?? staff.PharmacistDetail?.ShiftType
             });
         }
     }

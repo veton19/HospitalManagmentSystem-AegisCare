@@ -58,7 +58,7 @@ export const NurseDashboard = () => {
 
   const fetchAdmissions = async () => {
     try {
-      const res = await fetch('/api/admissions', {
+      const res = await fetch('/api/nurse/my-patients', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {

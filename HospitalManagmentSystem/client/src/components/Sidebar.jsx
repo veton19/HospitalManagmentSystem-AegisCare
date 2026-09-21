@@ -3,7 +3,8 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { 
   LayoutDashboard, UserCheck, Stethoscope, FileText, Pill, FlaskConical, 
-  BedDouble, Activity, ClipboardList, ShieldAlert, BarChart3, Users
+  BedDouble, Activity, ClipboardList, ShieldAlert, BarChart3, Users, Package, Search, Microscope,
+  UserPlus, Calendar
 } from 'lucide-react';
 
 export const Sidebar = () => {
@@ -13,9 +14,15 @@ export const Sidebar = () => {
 
   const portal = location.pathname.startsWith('/doctor') ? 'doctor'
     : location.pathname.startsWith('/nurse') ? 'nurse'
+    : location.pathname.startsWith('/pharmacist') ? 'pharmacist'
+    : location.pathname.startsWith('/labtech') ? 'labtech'
+    : location.pathname.startsWith('/receptionist') ? 'receptionist'
     : location.pathname.startsWith('/admin') ? 'admin'
     : user.role === 'Doctor' ? 'doctor'
     : user.role === 'Nurse' ? 'nurse'
+    : user.role === 'Pharmacist' ? 'pharmacist'
+    : user.role === 'LabTech' ? 'labtech'
+    : user.role === 'Receptionist' ? 'receptionist'
     : 'admin';
 
   const linkClass = ({ isActive }) =>
@@ -25,7 +32,12 @@ export const Sidebar = () => {
         : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
     }`;
 
-  const portalLabel = portal === 'doctor' ? 'Doctor' : portal === 'nurse' ? 'Nurse' : 'Admin';
+  const portalLabel = portal === 'doctor' ? 'Doctor' 
+    : portal === 'nurse' ? 'Nurse' 
+    : portal === 'pharmacist' ? 'Pharmacist' 
+    : portal === 'labtech' ? 'Lab Technician' 
+    : portal === 'receptionist' ? 'Receptionist'
+    : 'Admin';
 
   return (
     <aside className="w-64 bg-slate-900/60 backdrop-blur-md border-r border-slate-800 p-4 flex flex-col justify-between hidden md:flex min-h-[calc(100vh-61px)]">
@@ -46,6 +58,18 @@ export const Sidebar = () => {
             <NavLink to="/nurse" className={linkClass}>
               <Activity className="w-4 h-4 text-emerald-400" />
               <span>Nurse View</span>
+            </NavLink>
+            <NavLink to="/pharmacist" className={linkClass}>
+              <Pill className="w-4 h-4 text-violet-400" />
+              <span>Pharmacist View</span>
+            </NavLink>
+            <NavLink to="/labtech" className={linkClass}>
+              <Microscope className="w-4 h-4 text-amber-400" />
+              <span>Lab Tech View</span>
+            </NavLink>
+            <NavLink to="/receptionist" className={linkClass}>
+              <UserCheck className="w-4 h-4 text-pink-400" />
+              <span>Receptionist View</span>
             </NavLink>
           </div>
         )}
@@ -102,6 +126,65 @@ export const Sidebar = () => {
                 <NavLink to="/nurse/careplans" className={linkClass}>
                   <ClipboardList className="w-4 h-4 text-teal-400" />
                   <span>Care Plan Tasks</span>
+                </NavLink>
+              </>
+            )}
+
+            {portal === 'pharmacist' && (
+              <>
+                <NavLink to="/pharmacist" end className={linkClass}>
+                  <LayoutDashboard className="w-4 h-4 text-violet-400" />
+                  <span>Pharmacy Dashboard</span>
+                </NavLink>
+                <NavLink to="/pharmacist/requests" className={linkClass}>
+                  <ClipboardList className="w-4 h-4 text-amber-400" />
+                  <span>Doctor Requests</span>
+                </NavLink>
+                <NavLink to="/pharmacist/inventory" className={linkClass}>
+                  <Package className="w-4 h-4 text-cyan-400" />
+                  <span>Medication Stock</span>
+                </NavLink>
+                <NavLink to="/pharmacist/stock-check" className={linkClass}>
+                  <Search className="w-4 h-4 text-violet-300" />
+                  <span>Stock Check</span>
+                </NavLink>
+              </>
+            )}
+
+            {portal === 'labtech' && (
+              <>
+                <NavLink to="/labtech" end className={linkClass}>
+                  <LayoutDashboard className="w-4 h-4 text-amber-400" />
+                  <span>Lab Dashboard</span>
+                </NavLink>
+                <NavLink to="/labtech/queue" className={linkClass}>
+                  <FlaskConical className="w-4 h-4 text-amber-400" />
+                  <span>Pending Lab Queue</span>
+                </NavLink>
+                <NavLink to="/labtech/completed" className={linkClass}>
+                  <Microscope className="w-4 h-4 text-teal-400" />
+                  <span>Completed Results</span>
+                </NavLink>
+              </>
+            )}
+
+            {portal === 'receptionist' && (
+              <>
+                <NavLink to="/receptionist" end className={linkClass}>
+                  <LayoutDashboard className="w-4 h-4 text-pink-400" />
+                  <span>Reception Dashboard</span>
+                </NavLink>
+                <NavLink to="/receptionist/register" className={linkClass}>
+                  <UserPlus className="w-4 h-4 text-emerald-400" />
+                  <span>Register Patient</span>
+                </NavLink>
+                <NavLink to="/receptionist/appointments" className={linkClass}>
+                  <Calendar className="w-4 h-4 text-cyan-400" />
+                  <span>Appointments</span>
+                </NavLink>
+                <NavLink to="/receptionist/workload" className={linkClass}>
+                  <Users className="w-4 h-4 text-amber-400" />
+                  <span>Staff Workload & Assign</span>
                 </NavLink>
               </>
             )}

@@ -102,7 +102,7 @@ export const Login = () => {
                 <User className="w-5 h-5 absolute right-3 top-3.5 text-slate-500" />
               </div>
               <span className="text-[11px] text-slate-500 mt-1 block">
-                10xxxx = Admin | 20xxxx = Doctor | 30xxxx = Nurse
+                10xxxx = Admin | 20xxxx = Doctor | 30xxxx = Nurse | 40xxxx = Pharmacist | 50xxxx = LabTech | 60xxxx = Receptionist
               </span>
             </div>
 
@@ -136,7 +136,15 @@ export const Login = () => {
             <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block text-center">
               Quick One-Click Demo Staff Accounts
             </span>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => handleQuickFill('100001', 'Admin123!')}
+                className="p-2 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-amber-500/30 text-left transition-all"
+              >
+                <div className="text-xs font-bold text-amber-400">Admin</div>
+                <div className="text-[10px] text-slate-400 font-mono">100001</div>
+              </button>
               <button
                 type="button"
                 onClick={() => handleQuickFill('200001', 'Doctor123!')}
@@ -155,11 +163,45 @@ export const Login = () => {
               </button>
               <button
                 type="button"
-                onClick={() => handleQuickFill('100001', 'Admin123!')}
+                onClick={() => handleQuickFill('400001', 'Pharmacist123!')}
+                className="p-2 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-violet-500/40 text-left transition-all ring-1 ring-violet-500/20"
+              >
+                <div className="text-xs font-bold text-violet-400">Pharmacist</div>
+                <div className="text-[10px] text-slate-400 font-mono">400001</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickFill('500001', 'LabTech123!')}
                 className="p-2 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-amber-500/30 text-left transition-all"
               >
-                <div className="text-xs font-bold text-amber-400">Admin</div>
-                <div className="text-[10px] text-slate-400 font-mono">100001</div>
+                <div className="text-xs font-bold text-amber-400">LabTech</div>
+                <div className="text-[10px] text-slate-400 font-mono">500001</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickFill('600001', 'Receptionist123!')}
+                className="p-2 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-pink-500/30 text-left transition-all"
+              >
+                <div className="text-xs font-bold text-pink-400">Receptionist</div>
+                <div className="text-[10px] text-slate-400 font-mono">600001</div>
+              </button>
+            </div>
+            <div className="flex justify-center gap-2 pt-1 text-[11px] text-slate-500">
+              <span>Other shifts:</span>
+              <button
+                type="button"
+                onClick={() => handleQuickFill('400002', 'Pharmacist123!')}
+                className="text-violet-400 hover:underline font-mono"
+              >
+                400002 (Night)
+              </button>
+              <span>·</span>
+              <button
+                type="button"
+                onClick={() => handleQuickFill('400003', 'Pharmacist123!')}
+                className="text-violet-400 hover:underline font-mono"
+              >
+                400003 (Rotation)
               </button>
             </div>
           </div>

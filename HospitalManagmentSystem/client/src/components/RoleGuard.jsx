@@ -25,6 +25,7 @@ export const RoleGuard = ({ allowedRoles }) => {
     if (user.role === 'Admin') return <Navigate to="/admin" replace />;
     if (user.role === 'Doctor') return <Navigate to="/doctor" replace />;
     if (user.role === 'Nurse') return <Navigate to="/nurse" replace />;
+    if (user.role === 'Pharmacist') return <Navigate to="/pharmacist" replace />;
     return <Navigate to="/login" replace />;
   }
 

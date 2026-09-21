@@ -9,7 +9,6 @@ namespace HospitalManagmentSystem.Models
         [Key]
         public int Id { get; set; }
 
-        [Required]
         [MaxLength(20)]
         public string MRN { get; set; } = string.Empty; // Medical Record Number (e.g. MRN-100234)
 
@@ -47,5 +46,9 @@ namespace HospitalManagmentSystem.Models
         public Guid? PrimaryDoctorId { get; set; }
         [ForeignKey("PrimaryDoctorId")]
         public Staff? PrimaryDoctor { get; set; }
+
+        public Guid? PrimaryNurseId { get; set; }
+        [ForeignKey("PrimaryNurseId")]
+        public Staff? PrimaryNurse { get; set; }
     }
 }
